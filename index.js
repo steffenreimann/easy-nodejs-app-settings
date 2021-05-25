@@ -10,16 +10,19 @@ var ev = new EventEmitter();
 module.exports.settingFilePath = ''
 module.exports.data = {}
 module.exports.isInit = false
+module.exports.doLogging = false
 
 
 
 
-var init = (App) => {
+var init = (App, Interval) => {
     return new Promise((resolve, reject) => {
         var AppName = App
+        var WatcherInterval = Interval || 5000
         module.exports.settingFilePath = path.join(process.env.LOCALAPPDATA, AppName, `settings.json`)
+        log('Init Settings File - Path is ->', module.exports.settingFilePath)
         getSettings().then((resolveData) => {
-            watchSttingsFile(module.exports.settingFilePath)
+            watchSttingsFile(module.exports.settingFilePath, WatcherInterval)
             resolve(resolveData)
         }, (err) => {
             if (err.code == 'ENOENT') {
@@ -29,13 +32,15 @@ var init = (App) => {
                     } else {
                         fs.writeFile(module.exports.settingFilePath, JSON.stringify({ App: AppName }), { recursive: true }, (fileERR) => {
                             if (fileERR) {
-                                //console.log('File write error')
+                                log('Cant write Settings File!')
+                                //log('File write error')
                                 reject(fileERR)
                             } else {
-                                //console.log('reading file after write')
+                                log('Settings File is Created.')
+                                //log('reading file after write')
                                 getSettings().then((settings) => {
                                     module.exports.isInit = true
-                                    watchSttingsFile(module.exports.settingFilePath)
+                                    watchSttingsFile(module.exports.settingFilePath, WatcherInterval)
                                     resolve(settings)
 
                                 }, (errr) => { reject(errr) })
@@ -51,10 +56,11 @@ var init = (App) => {
 }
 var getSettings = () => {
     return new Promise((resolve, reject) => {
-        console.log(module.exports.settingFilePath)
+        //log('Reading Settings File - ', module.exports.settingFilePath)
 
         fs.readFile(module.exports.settingFilePath, function (err, data) {
             if (err) {
+                log('Read Settings File Failed')
                 reject(err)
             } else {
                 module.exports.data = JSON.parse(data.toString())
@@ -66,15 +72,14 @@ var getSettings = () => {
 
 var setSettings = (data) => {
     return new Promise((resolve, reject) => {
-        console.log(module.exports.settingFilePath)
+        //log('Set Settings', module.exports.settingFilePath)
 
 
         fs.writeFile(module.exports.settingFilePath, JSON.stringify(data), { recursive: true }, (fileERR) => {
             if (fileERR) {
-                console.log('File write error')
+                log('Write Settings File Failed')
                 reject(fileERR)
             } else {
-                console.log('reading file after write')
                 getSettings().then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
             }
         })
@@ -83,20 +88,19 @@ var setSettings = (data) => {
 
 var setKey = (data) => {
     return new Promise((resolve, reject) => {
-        console.log(module.exports.settingFilePath)
+        // log(module.exports.settingFilePath)
 
         getSettings().then((settings) => {
 
             setObjKeys(settings, data).then((newSettings) => {
 
-                console.log('Save Setting to file =', newSettings)
+                log('Save Settings File', newSettings)
 
                 fs.writeFile(module.exports.settingFilePath, JSON.stringify(newSettings), { recursive: true }, (fileERR) => {
                     if (fileERR) {
-                        console.log('File write error')
+                        log('Write Settings File Failed')
                         reject(fileERR)
                     } else {
-                        console.log('reading file after write')
                         getSettings().then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
                     }
                 })
@@ -108,7 +112,7 @@ var setKey = (data) => {
 
 var getKey = (data) => {
     return new Promise((resolve, reject) => {
-        console.log(module.exports.settingFilePath)
+        //log(module.exports.settingFilePath)
 
         getSettings().then((settings) => {
             resolve(index(settings, data))
@@ -122,16 +126,23 @@ var dir = (dirPath) => {
     })
 }
 
+function log() {
+    if (module.exports.doLogging) {
+        var args = Array.prototype.slice.call(arguments);
+        console.log.apply(console, args);
+    }
+}
 
-
-
-function watchSttingsFile(file) {
-    //console.log("watchSttingsFile ");
-    fs.watchFile(file, { bigint: false, persistent: true, interval: 4000 }, (curr, prev) => {
-        //console.log("Settings File changed = ");
-        //console.log("Previous Modified Time", prev.mtime);
-        //console.log("Current Modified Time", curr.mtime);
-        getSettings().then((settings) => { module.exports.ev.emit('changed', settings) }, () => { })
+function watchSttingsFile(file, interval) {
+    //log("watchSttingsFile ");
+    fs.watchFile(file, { bigint: false, persistent: true, interval: interval }, (curr, prev) => {
+        //log("Settings File changed = ");
+        //log("Previous Modified Time", prev.mtime);
+        //log("Current Modified Time", curr.mtime);
+        getSettings().then((settings) => {
+            log("Settings File changed = ", settings);
+            module.exports.ev.emit('changed', settings)
+        }, () => { })
     });
 }
 
@@ -151,9 +162,9 @@ var setObjKeys = (settings, newData) => {
 
         Object.keys(newData).forEach(function (key) {
             index(settings, key, newData[key])
-            //console.log('new index func = ', settings)
+            //log('new index func = ', settings)
         })
-        //console.log('resolve setobjkeys = ', settings)
+        //log('resolve setobjkeys = ', settings)
         resolve(settings)
     })
 }
