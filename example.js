@@ -10,7 +10,7 @@ settings.init('easy-nodejs-app-settings-example', 500).then((resolveData) => {
         //console.log('Set Value by key error = ', err)
     })
 }, (rejectData) => {
-    //console.log('Cant Init Settings File!!! Error= ', rejectData)
+    //console.log('Cant Init Settings File!!! Test Error= ', rejectData)
 })
 
 settings.ev.on('changed', (data) => {
