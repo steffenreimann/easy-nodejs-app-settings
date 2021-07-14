@@ -14,11 +14,23 @@ module.exports.doLogging = false
 
 
 
+//var test = { App: '', data: {}, Interval: 0 }
 
-var init = (App, Interval) => {
+/**
+ * Init Settings 
+ * @function [<init>]
+ * @param {Object} p - The Parameter
+ * @param {string} p.AppName - The App Name
+ * @param {Object} p.data - The Init Settings Structure
+ * @param {Number} p.Interval - The Interval for the Watcher
+ * @returns {Boolean} 
+ */
+var init = (p) => {
     return new Promise((resolve, reject) => {
-        var AppName = App
-        var WatcherInterval = Interval || 5000
+        log('Start')
+        p = p || {}
+        var AppName = p.App || 'easy-nodejs-app-settings-example'
+        var WatcherInterval = p.Interval || 5000
         module.exports.settingFilePath = path.join(process.env.LOCALAPPDATA, AppName, `settings.json`)
         log('Init Settings File - Path is ->', module.exports.settingFilePath)
         getSettings().then((resolveData) => {
@@ -26,11 +38,14 @@ var init = (App, Interval) => {
             resolve(resolveData)
         }, (err) => {
             if (err.code == 'ENOENT') {
+                log('Settings File Not Found, Create New One')
                 dir(path.dirname(module.exports.settingFilePath)).then((dirERR) => {
                     if (dirERR) {
                         reject(dirERR)
                     } else {
-                        fs.writeFile(module.exports.settingFilePath, JSON.stringify({ App: AppName }), { recursive: true }, (fileERR) => {
+                        var tempData = p.data || {}
+                        tempData['AppName'] = AppName
+                        fs.writeFile(module.exports.settingFilePath, JSON.stringify(tempData), { recursive: true }, (fileERR) => {
                             if (fileERR) {
                                 log('Cant write Settings File!')
                                 //log('File write error')
@@ -54,17 +69,28 @@ var init = (App, Interval) => {
         })
     })
 }
+
+
+
+/**
+ * get Settings 
+ * @returns {Object} Settings JSON Object
+
+ */
 var getSettings = () => {
     return new Promise((resolve, reject) => {
         //log('Reading Settings File - ', module.exports.settingFilePath)
 
         fs.readFile(module.exports.settingFilePath, function (err, data) {
             if (err) {
-                log('Read Settings File Failed')
                 reject(err)
             } else {
-                module.exports.data = JSON.parse(data.toString())
-                resolve(module.exports.data)
+                try {
+                    module.exports.data = JSON.parse(data.toString())
+                    resolve(module.exports.data)
+                } catch (e) {
+                    resolve(null)
+                }
             }
         });
     })
@@ -73,7 +99,6 @@ var getSettings = () => {
 var setSettings = (data) => {
     return new Promise((resolve, reject) => {
         //log('Set Settings', module.exports.settingFilePath)
-
 
         fs.writeFile(module.exports.settingFilePath, JSON.stringify(data), { recursive: true }, (fileERR) => {
             if (fileERR) {
@@ -91,21 +116,24 @@ var setKey = (data) => {
         // log(module.exports.settingFilePath)
 
         getSettings().then((settings) => {
+            if (settings == null) {
+                setSettings(data).then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
+            } else {
+                setObjKeys(settings, data).then((newSettings) => {
 
-            setObjKeys(settings, data).then((newSettings) => {
+                    log('Save Settings File', newSettings)
 
-                log('Save Settings File', newSettings)
+                    fs.writeFile(module.exports.settingFilePath, JSON.stringify(newSettings), { recursive: true }, (fileERR) => {
+                        if (fileERR) {
+                            log('Write Settings File Failed')
+                            reject(fileERR)
+                        } else {
+                            getSettings().then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
+                        }
+                    })
 
-                fs.writeFile(module.exports.settingFilePath, JSON.stringify(newSettings), { recursive: true }, (fileERR) => {
-                    if (fileERR) {
-                        log('Write Settings File Failed')
-                        reject(fileERR)
-                    } else {
-                        getSettings().then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
-                    }
                 })
-
-            })
+            }
         }, reject)
     })
 }

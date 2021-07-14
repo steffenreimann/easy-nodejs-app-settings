@@ -1,14 +1,18 @@
 const settings = require('./index.js')
 
 settings.doLogging = true;
-settings.init('easy-nodejs-app-settings-example', 500).then((resolveData) => {
-
-    console.log('Settings File Succsessfull Init.')
-    settings.setKey({ 'Key': 'value', 'otherKey': 'otherValue' }).then((data) => {
-        //console.log('Change Value by keys = ', data)
-    }, (err) => {
-        //console.log('Set Value by key error = ', err)
-    })
+settings.init().then((resolveData) => {
+    console.log(resolveData);
+    if (resolveData == null) {
+        console.log('Settings File Succsessfull Init. First Start write Data')
+        settings.setKey({ 'Key': 'value', 'otherKey': 'otherValue' }).then((data) => {
+            console.log('Write Data First Time to File Succsessfull = ', data)
+        }, (err) => {
+            console.log('Write Data First Time to File Error = ', err)
+        })
+    } else {
+        console.log('Settings File Succsessfull Init.', resolveData)
+    }
 }, (rejectData) => {
     //console.log('Cant Init Settings File!!! Test Error= ', rejectData)
 })
@@ -16,3 +20,5 @@ settings.init('easy-nodejs-app-settings-example', 500).then((resolveData) => {
 settings.ev.on('changed', (data) => {
     console.log('Event on changed')
 });
+
+settings.init
