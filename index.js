@@ -3,18 +3,8 @@ var fs = require('fs')
 
 var EventEmitter = require('events').EventEmitter;
 
-var ev = new EventEmitter();
 
 
-
-module.exports.settingFilePath = ''
-module.exports.data = {}
-module.exports.isInit = false
-module.exports.doLogging = false
-
-
-
-//var test = { App: '', data: {}, Interval: 0 }
 
 /**
  * Init Settings 
@@ -25,128 +15,189 @@ module.exports.doLogging = false
  * @param {Number} p.Interval - The Interval for the Watcher
  * @returns {Boolean} 
  */
-var init = (p) => {
-    return new Promise((resolve, reject) => {
-        log('Start')
-        p = p || {}
-        var AppName = p.App || 'easy-nodejs-app-settings-example'
-        var WatcherInterval = p.Interval || 5000
-        module.exports.settingFilePath = path.join(process.env.LOCALAPPDATA, AppName, `settings.json`)
-        log('Init Settings File - Path is ->', module.exports.settingFilePath)
-        getSettings().then((resolveData) => {
-            watchSttingsFile(module.exports.settingFilePath, WatcherInterval)
-            resolve(resolveData)
-        }, (err) => {
-            if (err.code == 'ENOENT') {
-                log('Settings File Not Found, Create New One')
-                dir(path.dirname(module.exports.settingFilePath)).then((dirERR) => {
-                    if (dirERR) {
-                        reject(dirERR)
+
+
+
+
+
+var initParams = { appname: 'easy-nodejs-app-settings-example', files: { settings: { data: {}, interval: 5000 }, DataStore: { data: '', interval: 5 } } }
+
+var Files = {}
+
+class File {
+    constructor(name, appname, interval, data, doLogging) {
+        this.appname = appname || 'easy-nodejs-app-settings-example';
+        this.name = name;
+        this.interval = interval || 0;
+        this.data = data || {};
+        this.path = path.join(process.env.LOCALAPPDATA, appname, `${name}.json`)
+        this.logging = doLogging || false;
+        this.event = new EventEmitter();
+
+
+        Files[this.name] = this;
+    }
+    async init() {
+        return new Promise(async (resolve, reject) => {
+            this.get().then((data) => {
+                if (this.interval >= 2000) {
+                    this.watch()
+                }
+                resolve(this)
+            }, (err) => {
+                if (err.code == 'ENOENT') {
+                    this.log('Settings File Not Found, Create New One')
+                    dir(path.dirname(this.path)).then((dirERR) => {
+                        if (dirERR) {
+                            reject(dirERR)
+                        } else {
+
+                            fs.writeFile(this.path, JSON.stringify(this.data), { recursive: true }, (fileERR) => {
+                                if (fileERR) {
+                                    this.log('Cant write Settings File!')
+                                    //this.log('File write error')
+                                    reject(fileERR)
+                                } else {
+                                    this.log('File is Created.')
+                                    //this.log('reading file after write')
+                                    this.get().then((data) => {
+                                        this.data = data
+                                        if (this.interval != 0) {
+                                            this.watch()
+                                            //watchFile(key)
+                                        }
+                                        resolve(this)
+                                    }, (err) => {
+                                        reject(err)
+                                    })
+                                }
+                            })
+                        }
+                    })
+                } else if (err.code == 'EJSON') {
+                    if (err.data == '') {
+                        this.log('File not')
+                        this.set(this.data).then((data) => {
+                            resolve(this)
+                        }, (err) => {
+                            reject(err)
+                        })
                     } else {
-                        var tempData = p.data || {}
-                        tempData['AppName'] = AppName
-                        fs.writeFile(module.exports.settingFilePath, JSON.stringify(tempData), { recursive: true }, (fileERR) => {
+                        this.log('This File has non JSON Data')
+                    }
+                }
+                this.log(err)
+            })
+        })
+    }
+    async get() {
+        return new Promise(async (resolve, reject) => {
+            fs.readFile(this.path, 'utf8', (err, data) => {
+                if (err) {
+                    reject(err)
+                } else {
+
+                    try {
+                        var jsondata = JSON.parse(data)
+                        this.data = jsondata
+                        resolve(jsondata)
+
+                    } catch (e) {
+                        var error = { code: 'EJSON', message: 'Invalid JSON', data: data, err: e }
+                        reject(error)
+                    }
+                }
+            })
+        })
+    }
+    async set(data) {
+        return new Promise(async (resolve, reject) => {
+            fs.writeFile(this.path, JSON.stringify(data), { recursive: true }, (err) => {
+                if (err) {
+                    reject(err)
+                } else {
+                    this.data = data
+                    resolve(data)
+                }
+            })
+        })
+    }
+    async setKey(NewData) {
+        return new Promise((resolve, reject) => {
+
+            this.get().then((HDDdata) => {
+                if (HDDdata == null) {
+                    this.set(NewData).then((HDDdata) => { resolve(HDDdata) }, (errr) => { reject(errr) })
+                } else {
+
+                    setObjKeys(HDDdata, NewData).then((newSettings) => {
+                        this.log('Save Settings File', newSettings)
+                        fs.writeFile(this.path, JSON.stringify(newSettings), { recursive: true }, (fileERR) => {
                             if (fileERR) {
-                                log('Cant write Settings File!')
-                                //log('File write error')
+                                this.log('Write Settings File Failed')
                                 reject(fileERR)
                             } else {
-                                log('Settings File is Created.')
-                                //log('reading file after write')
-                                getSettings().then((settings) => {
-                                    module.exports.isInit = true
-                                    watchSttingsFile(module.exports.settingFilePath, WatcherInterval)
-                                    resolve(settings)
-
+                                this.get().then((data) => {
+                                    this.data = data
+                                    resolve(data)
                                 }, (errr) => { reject(errr) })
                             }
                         })
-                    }
-                }, reject);
-            } else {
-                reject(err)
-            }
-        })
-    })
-}
-
-
-
-/**
- * get Settings 
- * @returns {Object} Settings JSON Object
-
- */
-var getSettings = () => {
-    return new Promise((resolve, reject) => {
-        //log('Reading Settings File - ', module.exports.settingFilePath)
-
-        fs.readFile(module.exports.settingFilePath, function (err, data) {
-            if (err) {
-                reject(err)
-            } else {
-                try {
-                    module.exports.data = JSON.parse(data.toString())
-                    resolve(module.exports.data)
-                } catch (e) {
-                    resolve(null)
-                }
-            }
-        });
-    })
-}
-
-var setSettings = (data) => {
-    return new Promise((resolve, reject) => {
-        //log('Set Settings', module.exports.settingFilePath)
-
-        fs.writeFile(module.exports.settingFilePath, JSON.stringify(data), { recursive: true }, (fileERR) => {
-            if (fileERR) {
-                log('Write Settings File Failed')
-                reject(fileERR)
-            } else {
-                getSettings().then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
-            }
-        })
-    })
-}
-
-var setKey = (data) => {
-    return new Promise((resolve, reject) => {
-        // log(module.exports.settingFilePath)
-
-        getSettings().then((settings) => {
-            if (settings == null) {
-                setSettings(data).then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
-            } else {
-                setObjKeys(settings, data).then((newSettings) => {
-
-                    log('Save Settings File', newSettings)
-
-                    fs.writeFile(module.exports.settingFilePath, JSON.stringify(newSettings), { recursive: true }, (fileERR) => {
-                        if (fileERR) {
-                            log('Write Settings File Failed')
-                            reject(fileERR)
-                        } else {
-                            getSettings().then((settings) => { resolve(settings) }, (errr) => { reject(errr) })
-                        }
                     })
 
-                })
+                }
+            }, reject)
+
+        })
+    }
+    async getKey(key) {
+        return new Promise((resolve, reject) => {
+            this.get().then((data) => {
+                resolve(index(data, key))
+            }, (err) => {
+                reject(err)
+            })
+        })
+
+    }
+    async remove() {
+        return new Promise(async (resolve, reject) => {
+            fs.unlink(this.path, (err) => {
+                if (err) {
+                    reject(err)
+                } else {
+                    delete Files[this.name]
+                    resolve(null)
+                }
+            })
+        })
+    }
+    async watch() {
+        return new Promise(async (resolve, reject) => {
+            if (this.interval != 0) {
+                fs.watchFile(this.path, { bigint: false, persistent: true, interval: this.interval }, (curr, prev) => {
+                    this.log('Changed File', this.path)
+                    this.get().then((data) => {
+                        this.event.emit('change', data)
+                    }, (err) => {
+                        if (err.code == 'ENOENT') {
+                            delete Files[this.name]
+                            this.event.emit('remove')
+                        }
+                    })
+                });
             }
-        }, reject)
-    })
+            resolve(null)
+        })
+    }
+    log() {
+        if (this.logging) {
+            var args = Array.prototype.slice.call(arguments);
+            console.log.apply(console, args);
+        }
+    }
 }
 
-var getKey = (data) => {
-    return new Promise((resolve, reject) => {
-        //log(module.exports.settingFilePath)
-
-        getSettings().then((settings) => {
-            resolve(index(settings, data))
-        }, reject)
-    })
-}
 
 var dir = (dirPath) => {
     return new Promise((resolve, reject) => {
@@ -154,25 +205,8 @@ var dir = (dirPath) => {
     })
 }
 
-function log() {
-    if (module.exports.doLogging) {
-        var args = Array.prototype.slice.call(arguments);
-        console.log.apply(console, args);
-    }
-}
 
-function watchSttingsFile(file, interval) {
-    //log("watchSttingsFile ");
-    fs.watchFile(file, { bigint: false, persistent: true, interval: interval }, (curr, prev) => {
-        //log("Settings File changed = ");
-        //log("Previous Modified Time", prev.mtime);
-        //log("Current Modified Time", curr.mtime);
-        getSettings().then((settings) => {
-            log("Settings File changed = ", settings);
-            module.exports.ev.emit('changed', settings)
-        }, () => { })
-    });
-}
+
 
 function index(obj, is, value) {
     if (typeof is == 'string')
@@ -197,11 +231,8 @@ var setObjKeys = (settings, newData) => {
     })
 }
 
+
 module.exports = {
-    init,
-    getSettings,
-    setSettings,
-    setKey,
-    getKey,
-    ev
+    File,
+    Files
 };
