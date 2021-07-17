@@ -1,48 +1,111 @@
 var path = require('path')
 var fs = require('fs')
-
 var EventEmitter = require('events').EventEmitter;
 
 
-
-
 /**
- * Init Settings 
- * @function [<init>]
- * @param {Object} p - The Parameter
- * @param {string} p.AppName - The App Name
- * @param {Object} p.data - The Init Settings Structure
- * @param {Number} p.Interval - The Interval for the Watcher
- * @returns {Boolean} 
- */
-
-
-
-
-
-var initParams = { appname: 'easy-nodejs-app-settings-example', files: { settings: { data: {}, interval: 5000 }, DataStore: { data: '', interval: 5 } } }
-
+* @var Files 
+* @type {Object}
+* @description Holds all files
+* @prop 
+*/
 var Files = {}
 
+
+
 class File {
-    constructor(name, appname, interval, data, doLogging) {
-        this.appname = appname || 'easy-nodejs-app-settings-example';
-        this.name = name;
-        this.interval = interval || 0;
-        this.data = data || {};
-        this.path = path.join(process.env.LOCALAPPDATA, appname, `${name}.json`)
-        this.logging = doLogging || false;
+    /**
+    * @constructor 
+    * @param {Object} Data { appname: 'easy-nodejs-app-settings-example', file: 'DataStore.json', data: {} }
+    * @property {string} appname
+    * @method init() - Init File
+    * @method get() - Load this File from Drive
+    * @method set() - Set Entry File 
+    * @method setKey() - Set Key, Only JSON File
+    * @method getKey() - Get Key, Only JSON File
+    * @method remove() - Remove Entry File
+    * @method watch() - Watch File
+    * @example var DataStore = new fm.File({ appname: 'easy-nodejs-app-settings-example', file: 'DataStore.json', interval: 5000, data: {}, doLogging: false })
+    */
+    constructor(data) {
+        /**
+        * @var appname
+        * @description Holds the name of the application.
+        * @prop 'easy-nodejs-app-settings-example'
+        */
+        this.appname = data.appname || 'easy-nodejs-app-settings-example';
+
+        if (typeof data.path != 'undefined' && data.path != '' && data.path != null && data.path != undefined && data.path != 'undefined') {
+            /**
+            * @var {String} path
+            * @description Holds the path of this file
+            * @prop 'C:/path/dir/file.json'
+            */
+            this.path = path.normalize(data.path)
+        } else {
+            this.path = path.join(process.env.LOCALAPPDATA, data.appname, data.file)
+        }
+
+        /**
+        * @var {Object} pathParsed 
+        * @description Holds all parts of the path after Init
+        * @prop { root: 'C:\\', dir: 'C:\\path\\dir', base: 'file.txt', ext: '.txt', name: 'file' }
+        */
+        this.pathParsed = path.parse(this.path);
+
+        /**
+        * @var {String} name 
+        * @description Holds The File Name
+        * @prop 'Filename'
+        */
+        this.name = this.pathParsed.name;
+
+        /**
+        * @var {Integer} interval 
+        * @description Holds The Interval of the Watch
+        * @prop 5000
+        */
+        this.interval = data.interval || 0;
+
+        /**
+       * @var {Any} data 
+       * @description Holds The Data of the File
+       * @prop Any
+       */
+        this.data = data.data
+
+
+        /**
+        * @var logging 
+        * @type {Boolean}
+        * @description Decides whether to log or not
+        * @prop false
+        */
+        this.logging = data.doLogging || false;
+
+        /**
+        * @var event 
+        * @type {Event}
+        * @description Holds The Event Emitter
+        * @prop event
+        */
         this.event = new EventEmitter();
-
-
         Files[this.name] = this;
     }
+
+    /** 
+    * @method init()
+    * @description This Function must be called after Construction
+    * @example await File.init()
+    * @example File.init().then((data) => { console.log('init ',data)}, (err) => { console.log('init Failed ', err)})
+    */
     async init() {
         return new Promise(async (resolve, reject) => {
             this.get().then((data) => {
                 if (this.interval >= 2000) {
                     this.watch()
                 }
+
                 resolve(this)
             }, (err) => {
                 if (err.code == 'ENOENT') {
@@ -51,26 +114,17 @@ class File {
                         if (dirERR) {
                             reject(dirERR)
                         } else {
-
-                            fs.writeFile(this.path, JSON.stringify(this.data), { recursive: true }, (fileERR) => {
-                                if (fileERR) {
-                                    this.log('Cant write Settings File!')
-                                    //this.log('File write error')
-                                    reject(fileERR)
-                                } else {
-                                    this.log('File is Created.')
-                                    //this.log('reading file after write')
-                                    this.get().then((data) => {
-                                        this.data = data
-                                        if (this.interval != 0) {
-                                            this.watch()
-                                            //watchFile(key)
-                                        }
-                                        resolve(this)
-                                    }, (err) => {
-                                        reject(err)
-                                    })
+                            console.log('Init file data = ', this.data)
+                            this.set(this.data).then((data) => {
+                                this.data = data
+                                if (this.interval != 0) {
+                                    this.watch()
                                 }
+                                resolve(this)
+                            }, (err) => {
+                                this.log('Cant write Settings File!')
+                                //this.log('File write error')
+                                reject(err)
                             })
                         }
                     })
@@ -90,88 +144,171 @@ class File {
             })
         })
     }
+
+
+    /** 
+    * @method get()
+    * @description Load this File from Drive
+    * @returns {Promise}  Returns a Promise
+    * @example await File.get()
+    * @example File.get().then((data) => { console.log('get ',data)}, (err) => { console.log('get Failed ', err)})
+    */
     async get() {
         return new Promise(async (resolve, reject) => {
             fs.readFile(this.path, 'utf8', (err, data) => {
                 if (err) {
-                    reject(err)
+                    reject(err);
                 } else {
-
-                    try {
-                        var jsondata = JSON.parse(data)
-                        this.data = jsondata
-                        resolve(jsondata)
-
-                    } catch (e) {
-                        var error = { code: 'EJSON', message: 'Invalid JSON', data: data, err: e }
-                        reject(error)
+                    if (this.pathParsed.ext == '.json') {
+                        try {
+                            var jsondata = JSON.parse(data);
+                            this.data = jsondata;
+                            resolve(jsondata);
+                        } catch (e) {
+                            var error = { code: 'EJSON', message: 'Invalid JSON', data: data, err: e };
+                            reject(error);
+                        }
+                    } else {
+                        this.data = data;
+                        resolve(data)
                     }
                 }
             })
         })
     }
+
+
+    /**
+    * @method set()
+    * @description Write Data to Drive
+    * @param {Object} data  Data to be written to the file
+    * @returns {Promise}  Returns a Promise
+    * @example await File.set({key: 'value'})
+    * @example File.set({key: 'value'}).then((data) => { console.log('Set ',data)}, (err) => { console.log('Set Failed ', err)})
+    */
     async set(data) {
         return new Promise(async (resolve, reject) => {
-            fs.writeFile(this.path, JSON.stringify(data), { recursive: true }, (err) => {
-                if (err) {
-                    reject(err)
+            if (this.pathParsed.ext == '.json') {
+                if (typeof data == 'object') {
+                    fs.writeFile(this.path, JSON.stringify(data), { recursive: true }, (err) => {
+                        if (err) {
+                            this.log('Cant write Settings File! Error: ', err)
+                            reject(err)
+                        } else {
+                            this.log(`Write Successful: ${this.path}`)
+                            this.data = data
+                            resolve(data)
+                        }
+                    })
                 } else {
-                    this.data = data
-                    resolve(data)
+                    this.log('This Data are not JSON')
+                    reject('This Data are not JSON')
                 }
-            })
+            } else {
+                fs.writeFile(this.path, data, { recursive: true }, (err) => {
+                    if (err) {
+                        this.log('Cant write Settings File! Error: ', err)
+                        reject(err)
+                    } else {
+                        this.log(`Write Successful: ${this.path}`)
+                        this.data = data
+                        resolve(data)
+                    }
+                })
+            }
         })
     }
+
+
+    /**
+     * @method setKey()
+     * @description Set Key Only JSON Files
+     * @param {Object} data  Keys wich will be written to the file
+     * @returns {Promise}  Returns a Promise
+     * @example await File.setKey({key: 'value'})
+    * @example File.setKey({key: 'value'}).then((data) => { console.log('Set Keys ',data)}, (err) => { console.log('Set Keys Failed ', err)})
+     */
     async setKey(NewData) {
         return new Promise((resolve, reject) => {
+            if (this.pathParsed.ext != '.json') {
+                this.log('This File is not JSON')
+                reject(new Error('This File is not JSON'))
+            } else {
+                this.get().then((HDDdata) => {
+                    if (HDDdata == null) {
+                        this.set(NewData).then((HDDdata) => { resolve(HDDdata) }, (errr) => { reject(errr) })
+                    } else {
+                        setObjKeys(HDDdata, NewData).then((newSettings) => {
 
-            this.get().then((HDDdata) => {
-                if (HDDdata == null) {
-                    this.set(NewData).then((HDDdata) => { resolve(HDDdata) }, (errr) => { reject(errr) })
-                } else {
-
-                    setObjKeys(HDDdata, NewData).then((newSettings) => {
-                        this.log('Save Settings File', newSettings)
-                        fs.writeFile(this.path, JSON.stringify(newSettings), { recursive: true }, (fileERR) => {
-                            if (fileERR) {
+                            this.set(newSettings).then((data) => {
+                                this.log('Save Settings File')
+                                this.data = data
+                                resolve(data)
+                            }, (errr) => {
                                 this.log('Write Settings File Failed')
-                                reject(fileERR)
-                            } else {
-                                this.get().then((data) => {
-                                    this.data = data
-                                    resolve(data)
-                                }, (errr) => { reject(errr) })
-                            }
+                                reject(errr)
+                            })
                         })
-                    })
-
-                }
-            }, reject)
-
+                    }
+                }, reject)
+            }
         })
     }
+
+
+    /**
+    * @method getKey()
+    * @description Get Key Only JSON File
+    * @param {String} Key  Data to be written to the file
+    * @returns {Promise}  Returns a Promise
+    * @example await File.getKey()
+    * @example File.getKey().then((data) => { console.log('Get Keys, ', data)}, (err) => { console.log('Get Keys Failed ', err)})
+    */
     async getKey(key) {
         return new Promise((resolve, reject) => {
-            this.get().then((data) => {
-                resolve(index(data, key))
-            }, (err) => {
-                reject(err)
-            })
+            if (this.pathParsed.ext != '.json') {
+                reject(new Error('This File is not JSON'))
+
+            } else {
+                this.get().then((data) => {
+                    resolve(index(data, key))
+                }, (err) => {
+                    reject(err)
+                })
+            }
         })
 
     }
+
+
+    /**
+    * @method remove()
+    * @description Remove this File from Drive
+    * @returns {Promise}  Returns a Promise
+    * @example await File.remove()
+    * @example File.remove().then(() => { console.log('File Removed')}, (err) => { console.log('File Remove Failed')})
+    */
     async remove() {
         return new Promise(async (resolve, reject) => {
             fs.unlink(this.path, (err) => {
                 if (err) {
+                    this.log('Cant remove File! Error: ', err)
                     reject(err)
                 } else {
                     delete Files[this.name]
+                    this.log('File Removed', this.path)
                     resolve(null)
                 }
             })
         })
     }
+
+
+    /**
+     * @method watch()
+     * @description Watch this File
+     * @returns {Promise}  Returns a Promise
+     */
     async watch() {
         return new Promise(async (resolve, reject) => {
             if (this.interval != 0) {
@@ -190,12 +327,19 @@ class File {
             resolve(null)
         })
     }
+
+
+    /**
+     * @method log()
+     * @description Will be console.log when logging is true
+     */
     log() {
         if (this.logging) {
             var args = Array.prototype.slice.call(arguments);
             console.log.apply(console, args);
         }
     }
+
 }
 
 
@@ -204,8 +348,6 @@ var dir = (dirPath) => {
         fs.mkdir(dirPath, (dirERR) => { if (dirERR) { if (dirERR.code == 'EEXIST') { resolve(null) } else { reject(dirERR) } } else { resolve(null) } })
     })
 }
-
-
 
 
 function index(obj, is, value) {

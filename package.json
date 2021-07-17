@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node example.js"
+    "test": "node example.js",
+    "doc": "node genDocs.js"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/steffenreimann/easy-nodejs-app-settings/issues"
   },
-  "homepage": "https://github.com/steffenreimann/easy-nodejs-app-settings#readme"
+  "homepage": "https://github.com/steffenreimann/easy-nodejs-app-settings#readme",
+  "devDependencies": {
+    "markdox": "^0.1.10"
+  },
+  "dependencies": {}
 }
