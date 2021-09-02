@@ -1,6 +1,6 @@
 # easy-nodejs-app-settings
 
-## Attention from version 0.0.2 to version 0.0.3 some major changes have been made. So the versions are no longer compatible with each other 
+### Attention from version 0.0.2 to version 0.0.3 some major changes have been made. So the versions are no longer compatible with each other 
 
 
 With this module you can easily save settings of your Nodejs App or Electron App.
@@ -13,8 +13,10 @@ With this module you can easily save settings of your Nodejs App or Electron App
 npm install easy-nodejs-app-settings --save
 ```
 ### Run Test
-This test will be ckeck if the module is working. And has the right permissions.
+This test will be ckeck if the module is working. And has the right permissions. 
 ```javascript
+cd node_modules/easy-nodejs-app-settings
+
 npm run test
 ```
 ### require
@@ -30,7 +32,8 @@ asnyc function init(){
 	var DataStore = new fm.File({ 
 		appname: 'YOUR-APP-NAME', // required
 		file: 'DataStore.json', // required
-		data: {}, // Optional, If you set Data and File has allready data it will not be overwritten
+		data: {}, // Optional, Set Data on Init only if the file is newly created or overwriteOnInit is true
+		overwriteOnInit: true, // Optional, Set true if you want to overwrite the file on init. Attention the whole file will be overwritten! 
 		interval: 5000, // Optional, if not set the interval no File watcher will be created 
 		doLogging: false // Optional
 	})

@@ -124,9 +124,12 @@ class File {
 	async init() {
 		return new Promise(async (resolve, reject) => {
 			this.get().then(
-				(data) => {
+				async (data) => {
 					if (this.interval >= 2000) {
 						this.watch();
+					}
+					if (this.overwriteOnInit) {
+						await this.set(this.data);
 					}
 
 					resolve(this);

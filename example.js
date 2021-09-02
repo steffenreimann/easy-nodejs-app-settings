@@ -41,9 +41,6 @@ async function ASYNC_AWAIT() {
 
 	DataStore.log('Hallo', 'test', DataStore.data);
 
-	var DataStoreTXT = new settings.File({ path: 'C:/Users/Steffen/AppData/Local/easy-nodejs-app-settings-example/DataStoreTESTPATH1.csv', interval: 5000, data: 'Test', doLogging: false });
-
-	await DataStoreTXT.init();
 	//console.log('INIT Finished = ', DataStoreTXT.path)
 	console.log('INIT Finished = ', DataStoreTXT);
 
