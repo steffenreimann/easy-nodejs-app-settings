@@ -95,8 +95,9 @@ class File {
        * @description Holds The Data of the File
        * @prop Any
        */
-		this.data = data.data;
+		this.data = data.data || {};
 
+		//console.log(this.proxy);
 		/**
         * @var logging 
         * @type {Boolean}
@@ -316,6 +317,54 @@ class File {
 						reject(err);
 					}
 				);
+			}
+		});
+	}
+
+	/**
+    * @method push
+    * @description push element to array
+    * @param {Object} data  Data to be written to a Objekt or Array
+    * @returns {Promise}  Returns a Promise
+    * @example 
+    * @example 
+    */
+	async push(NewData) {
+		return new Promise(async (resolve, reject) => {
+			if (this.pathParsed.ext != '.json') {
+				reject(new Error('This File is not JSON'));
+			} else {
+				if (this.pathParsed.ext != '.json') {
+					this.log('This File is not JSON');
+					reject(new Error('This File is not JSON'));
+				} else {
+					this.get().then(async (HDDdata) => {
+						if (HDDdata == null) {
+							this.set(NewData).then(
+								(HDDdata) => {
+									resolve(HDDdata);
+								},
+								(errr) => {
+									reject(errr);
+								}
+							);
+						} else {
+							for await (let key of Object.keys(NewData)) {
+								if (typeof HDDdata[key] == 'object') {
+									if (Array.isArray(HDDdata[key])) {
+										HDDdata[key].push(NewData[key]);
+										console.log('push data to drivedata');
+									} else {
+										Object.assign(HDDdata[key], NewData[key]);
+										console.log('assign data to drivedata = ', HDDdata[key]);
+									}
+								}
+								await this.setKey({ [key]: HDDdata[key] });
+							}
+							resolve(HDDdata);
+						}
+					}, reject);
+				}
 			}
 		});
 	}

@@ -4,17 +4,17 @@ const path = require('path');
 
 async function ASYNC_AWAIT() {
 	const pathToDir = path.join(process.env.LOCALAPPDATA, 'easy-nodejs-app-settings-test');
-	var DataStore = new fm.File({ appname: 'easy-nodejs-app-settings-test', file: 'test.json', interval: 5000, data: {}, doLogging: false });
+	var DataStore = new fm.File({ appname: 'easy-nodejs-app-settings-test', file: 'test.json', interval: 5000, data: {}, doLogging: true });
 	try {
 		//Init File
 		await DataStore.init();
 
 		// Listen on File events
 		DataStore.event.on('change', (data) => {
-			console.log('Event change: ');
+			console.log('Event change!');
 		});
 		DataStore.event.on('remove', (data) => {
-			console.log('Event remove: ');
+			console.log('Event remove!');
 		});
 
 		// Set Enrty File
@@ -24,14 +24,28 @@ async function ASYNC_AWAIT() {
 		await DataStore.setKey({ data: {}, 'data.data1': {}, 'data.data1.data2': {} });
 		await DataStore.setKey({ 'user.name': 'herbert24', 'user.address.name': 'herb24', 'user.address.town.Number': '24' });
 
-		deleteFolderRecursive(pathToDir);
+		console.log(DataStore);
+		await DataStore.setKey({ testArr: [ 1, 2 ] });
+		await DataStore.setKey({ testObj: { A: 1, B: 2 } });
+		console.log(DataStore.data.testArr);
+
+		// Push Element to an Array and save them
+		await DataStore.push({ testArr: 3 });
+		await DataStore.push({ testArr: 4 });
+
+		await DataStore.push({ testObj: { C: 3, D: 4 } });
+		await DataStore.push({ testObj: { E: 5, F: 6 } });
+
+		//deleteFolderRecursive(pathToDir);
 		console.log('Test finished without Errors!');
-		process.exit(0);
+
+		//process.exit(0);
 	} catch (err) {
-		deleteFolderRecursive(pathToDir);
+		//deleteFolderRecursive(pathToDir);
 		console.log('Test Cant Finished! Error: ');
 		console.log(err);
-		process.exit(1);
+
+		//process.exit(1);
 	}
 }
 

@@ -28,7 +28,7 @@ const fm = require('easy-nodejs-app-settings')
 ### Init with async function and await
 ```javascript
 
-asnyc function init(){
+async function init(){
 	var DataStore = new fm.File({ 
 		appname: 'YOUR-APP-NAME', // required
 		file: 'DataStore.json', // required
@@ -91,6 +91,23 @@ await DataStore.setKey({ 'user.name': 'herbbert', 'user.age': '28' });
 ### Get Key Value
 ```javascript
 await DataStore.getKey('user.name');
+```
+
+### Push to Array or Assign to Object
+#### if you want to push to an Array or Assign data to an Object, the array or object must be defined in the file
+```javascript
+// Define an Array
+await DataStore.setKey({ testArr: [ 1, 2 ] });
+// Define an Object
+await DataStore.setKey({ testObj: { A: 1, B: 2 } });
+```
+
+### push Value to Array or Object
+```javascript
+//Push to Array
+await DataStore.push({ testArr: 3 });
+//Assign to Object
+await DataStore.push({ testObj: { C: 3, D: 4 } });
 ```
 
 
