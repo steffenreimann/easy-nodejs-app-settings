@@ -1,7 +1,5 @@
 # easy-nodejs-app-settings
 
-### Attention from version 0.0.2 to version 0.0.3 some major changes have been made. So the versions are no longer compatible with each other 
-
 
 With this module you can easily save settings of your Nodejs App or Electron App.
 
