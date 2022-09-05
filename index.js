@@ -66,7 +66,7 @@ class File {
 			 */
 			this.path = path.normalize(data.path);
 		} else {
-			this.path = path.join(process.env.LOCALAPPDATA, data.appname, data.file);
+			this.path = path.join(process.env.LOCALAPPDATA || './', data.appname, data.file);
 		}
 
 		/**
@@ -135,56 +135,60 @@ class File {
 			var overwriteData = this.data
 			this.get().then(
 				async (data) => {
-						if (this.interval >= 2000) {
-							this.watch();
-						}
-						if (this.overwriteOnInit) {
-							await this.set(overwriteData);
-						}
+					this.log('Settings File Found');
+					if (this.interval >= 2000) {
+						this.log('Starting Watcher');
+						this.watch();
+					}
+					if (this.overwriteOnInit) {
 
-						resolve(this);
-					},
-					(err) => {
-						if (err.code == 'ENOENT') {
-							this.log('Settings File Not Found, Create New One');
-							dir(path.dirname(this.path)).then((dirERR) => {
-								if (dirERR) {
-									reject(dirERR);
-								} else {
-									this.log('Init file data = ', this.data);
-									this.set(this.data).then(
-										(data) => {
-											this.data = data;
-											if (this.interval != 0) {
-												this.watch();
-											}
-											resolve(this);
-										},
-										(err) => {
-											this.log('Cant write Settings File!');
-											//this.log('File write error')
-											reject(err);
-										}
-									);
-								}
-							});
-						} else if (err.code == 'EJSON') {
-							if (err.data == '') {
-								this.log('File not');
+						this.log('Overwrite on init');
+						await this.set(overwriteData);
+					}
+
+					resolve(this);
+				},
+				(err) => {
+					if (err.code == 'ENOENT') {
+						this.log('Settings File Not Found, Create New One');
+						dir(path.dirname(this.path)).then((dirERR) => {
+							if (dirERR) {
+								reject(dirERR);
+							} else {
+								this.log('Init file data = ', this.data);
 								this.set(this.data).then(
 									(data) => {
+										this.data = data;
+										if (this.interval != 0) {
+											this.watch();
+										}
 										resolve(this);
 									},
 									(err) => {
+										this.log('Cant write Settings File!');
+										//this.log('File write error')
 										reject(err);
 									}
 								);
-							} else {
-								this.log('This File has non JSON Data');
 							}
+						});
+					} else if (err.code == 'EJSON') {
+						if (err.data == '') {
+							this.log('File not');
+							this.set(this.data).then(
+								(data) => {
+									resolve(this);
+								},
+								(err) => {
+									reject(err);
+								}
+							);
+						} else {
+							this.log('This File has non JSON Data');
 						}
-						this.log(err);
 					}
+					this.log(err);
+				}
 			);
 		});
 	}
