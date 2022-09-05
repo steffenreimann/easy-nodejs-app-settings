@@ -56,7 +56,7 @@ async function ASYNC_AWAIT() {
 		});
 		await DataStore.setKey({
 			'user.name': 'herbert24',
-			'user.address.name': 'herb24',
+			'user.address.name': 'herbb24',
 			'user.address.town.Number': '24'
 		});
 
